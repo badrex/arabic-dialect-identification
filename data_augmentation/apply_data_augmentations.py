@@ -320,7 +320,7 @@ if augmentation == "ADDITIVE_NOISE":
 split = "train"
 
 # save all converted segments into this dir as wav files
-output_dir = f"../augmented_{split}_ADI5_{augmentation.lower()}/{split}/"
+output_dir = f"ADI5_augmented_{split}_{augmentation.lower()}/"
 
 # create output directory if it does not exist
 if not os.path.exists(output_dir):
