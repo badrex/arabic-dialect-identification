@@ -396,7 +396,7 @@ for dialect in ['GLF', 'EGY', 'LAV', 'NOR', 'MSA']:
         # save the spectrogram as a wav file
         output_path = output_dir + dialect + '/' + audio_clip_id + '.wav'
 
-        #print(processed_audio, processed_audio.shape)
+        #print(processed_audio.shape)
 
         torchaudio.save(output_path, processed_audio, 16000)
 
