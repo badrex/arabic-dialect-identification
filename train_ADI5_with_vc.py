@@ -57,6 +57,8 @@ from transformers import (
     AutoModelForAudioClassification, 
     AutoFeatureExtractor, 
     Wav2Vec2Config,
+    AutoConfig,
+    DataCollatorWithPadding,
     TrainingArguments,
     Trainer,
     set_seed
@@ -400,8 +402,52 @@ ADI5_dataset_train = ADI5_dataset_train.map(
     map_dialects,
     batched=True,
     batch_size=1024,
-    num_proc=1,
+    num_proc=1, # for batching this has to be 1
 )
+
+logger.info("Dialect distribution in training set after mapping:")
+logger.info(ADI5_dataset_train.unique('dialect'))
+logger.info(Counter(ADI5_dataset_train['dialect']))
+
+# shuffle the training set
+logger.info("Shuffling training dataset...")
+ADI5_dataset_train = ADI5_dataset_train.shuffle(
+    seed=config_parameters['random_seed'], 
+    #num_proc=10
+)
+
+# for debugging purposes, take onyl the first 1000 samples
+# logger.info("Taking first 100 samples from the training set for debugging...")
+# ADI5_dataset_train = ADI5_dataset_train.select(
+#     range(100)
+# )
+
+# to avoidd CUDA out of memory errors, clip audio samples to a maximum duration
+logger.info("Clipping audio samples to a maximum duration...")
+
+def clip_audio(example):
+    """Clip audio samples to a maximum duration."""
+    max_duration = config_parameters['max_duration']
+    sampling_rate = feature_extractor.sampling_rate
+    max_samples = int(max_duration * sampling_rate)
+    
+    # Clip the audio array
+    if len(example['audio']['array']) > max_samples:
+        example['audio']['array'] = example['audio']['array'][:max_samples]
+    
+    return example
+
+# Use without batched=True (simpler and more reliable)
+ADI5_dataset_train = ADI5_dataset_train.map(
+    clip_audio,
+    num_proc=4,  
+)
+
+ADI5_dataset_dev = ADI5_dataset_dev.map(
+    clip_audio,
+    num_proc=4,
+)
+
 
 logger.info(f"Final training dataset: {ADI5_dataset_train}")
 
@@ -420,6 +466,11 @@ logger.info(f"Label dict: {str_to_int}" )
 # set max duration for audio samples
 max_duration = config_parameters['max_duration']
 
+# based on the model typel, set input features key
+if model_id == "facebook/w2v-bert-2.0":
+    input_features_key = "input_features"
+else:
+    input_features_key = "input_values"
 
 def preprocess_function(examples):
     audio_arrays = [x["array"] for x in examples["audio"]]
@@ -430,9 +481,13 @@ def preprocess_function(examples):
         truncation=True,
         return_attention_mask=True,
     )
+
     inputs["label"] = [str_to_int[x] for x in examples["dialect"]]
     # Ensure 'input_values' contains numerical arrays
-    inputs["input_values"] = [np.array(x) for x in inputs["input_values"]]
+    inputs[input_features_key] = [
+        np.array(x) for x in inputs[input_features_key]
+    ]
+
     return inputs
 
 # obtain dev and test splits as dataset objects
@@ -455,8 +510,8 @@ ADI5_sample_encoded = ADI5_sample.map(
     preprocess_function,
     remove_columns=["audio"],
     batched=True,
-    batch_size=100,
-    num_proc=1,
+    batch_size=64,
+    num_proc=1, # for batching this has to be 1
 )
 logger.info(f"Training dataset with extracted features: {ADI5_sample_encoded}")
 
@@ -473,7 +528,7 @@ logger.info(f"Integer to label dict: {int_to_str}")
 
 # create a config object for the model
 logger.info("Creating an instance of the pretraibed model...")
-config = Wav2Vec2Config.from_pretrained(model_id)
+config = AutoConfig.from_pretrained(model_id)
 
 config.num_labels=num_labels
 config.label2id=str_to_int
@@ -494,7 +549,9 @@ model = AutoModelForAudioClassification.from_pretrained(
 )
 
 # Freeze encoder
-if config_parameters['freeze_feature_extractor']:
+if (config_parameters['freeze_feature_extractor'] and 
+    model_id != "facebook/w2v-bert-2.0"):
+    logger.info("Freezing feature extractor parameters...")
     model.wav2vec2.feature_extractor._freeze_parameters()
 
 # to confirm if feature extractor is frozen
@@ -534,6 +591,36 @@ repo_name= "inprogress/" + '-'.join(
     ]
 )    
 
+# create collator for padding
+class AudioDataCollator:
+    def __init__(self, feature_extractor):
+        self.feature_extractor = feature_extractor
+    
+    def __call__(self, features: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
+        # Prepare the batch dict in the format expected by the feature extractor
+        batch = {
+            input_features_key: [f[input_features_key] for f in features],
+            "attention_mask": [f["attention_mask"] for f in features]
+        }
+        
+        # Use the feature extractor's native padding
+        batch = self.feature_extractor.pad(
+            batch,
+            padding=True,
+            return_tensors="pt"
+        )
+        
+        # Add labels
+        batch["labels"] = torch.tensor(
+            [f["label"] for f in features], 
+            dtype=torch.long
+        )
+        
+        return batch
+
+data_collator = AudioDataCollator(feature_extractor)
+
+
 # set training arguments
 logger.info("Setting training arguments...")
 training_args = TrainingArguments(
@@ -543,14 +630,14 @@ training_args = TrainingArguments(
     report_to="wandb",  # enable logging to W&B
     logging_steps=1,  # how often to log to W&B
     per_device_train_batch_size=config_parameters['batch_size'], 
-    per_device_eval_batch_size=32,    # Same for evaluation
+    per_device_eval_batch_size=8,    
     eval_strategy="steps",
     eval_steps=100,
     save_strategy="steps", 
     save_steps=100,
     #save_strategy="epoch",
     learning_rate=config_parameters['learning_rate'],
-    gradient_accumulation_steps=gradient_accumulation_steps,
+    gradient_accumulation_steps=config_parameters['gradient_accumulation_steps'],
     num_train_epochs=num_train_epochs,
     weight_decay=0.01,
     warmup_ratio=0.1, #0.1, 0.067, # 0.15 -- 0.1 works well
@@ -558,6 +645,9 @@ training_args = TrainingArguments(
     metric_for_best_model="accuracy",
     greater_is_better=True,  # True if your metric should be maximized (like accuracy)
     save_total_limit=2,  # Keep only the best model
+    dataloader_pin_memory=False,
+    remove_unused_columns=True,
+    gradient_checkpointing=True,
     fp16=True,
     push_to_hub=False,
 )
@@ -581,16 +671,17 @@ trainer = Trainer(
     train_dataset=ADI5_sample_encoded["train"],
     eval_dataset=ADI5_sample_encoded["dev"],
     processing_class=feature_extractor,
+    data_collator=data_collator,  
     compute_metrics=compute_metrics,
 )
 
-print('Training model...')
+logger.info('Training model...')
 trainer.train()
 
 # save the model
-print('Saving model...')
+logger.info('Saving model...')
 trainer.save_model()
 
 # evaluate the model
-print('Evaluating model...')
+logger.info('Evaluating model...')
 trainer.evaluate()
