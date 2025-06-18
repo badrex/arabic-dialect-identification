@@ -1,10 +1,14 @@
 
 # Arabic Dialect Identification (ADI) in Speech by Fine-tuning Speech Encoders
 
+<!-- <div align="center">
+<img src="https://huggingface.co/badrex/mms-300m-arabic-dialect-identifier/resolve/main/assets/logo_2.png" alt="Image header" width="750"/>
+</div> -->
 
-<img src="https://huggingface.co/badrex/mms-300m-arabic-dialect-identifier/resolve/main/assets/logo_2.png" alt="Image header" width="500"/>
 
-https://huggingface.co/badrex/mms-300m-arabic-dialect-identifier/resolve/main/assets/logo_2.png
+<div align="center">
+
+![image logo](https://huggingface.co/badrex/mms-300m-arabic-dialect-identifier/resolve/main/assets/logo_2.png)
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-311/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -12,11 +16,13 @@ https://huggingface.co/badrex/mms-300m-arabic-dialect-identifier/resolve/main/as
 [![arXiv](https://img.shields.io/badge/arXiv-paper-b31b1b.svg)](https://arxiv.org/abs/2505.24713)
 [![Language](https://img.shields.io/badge/Language-Arabic-red)](https://en.wikipedia.org/wiki/Arabic)
 
-
+</div>
 
 Hello there 👋🏼
 
-This is the code repo for our Interspeech 2025 paper **Voice Conversion Improves Cross-Domain Robustness for Spoken Arabic Dialect Identification**. 
+This is the code repo for our Interspeech 2025 paper:
+
+**Voice Conversion Improves Cross-Domain Robustness for Spoken Arabic Dialect Identification**. 
 
 
 
