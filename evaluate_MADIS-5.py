@@ -91,8 +91,8 @@ for model, model_path in models.items():
 
     for i, sample in tqdm(enumerate(in_domain_eval_dataset), ncols=100, total=len(in_domain_eval_dataset)):
 
-        # take only the first 30 seconds of the audio
-        max_duration_in_seconds = 30
+        # take only the first 60 seconds of the audio
+        max_duration_in_seconds = 60
         max_length = max_duration_in_seconds * sample["audio"]["sampling_rate"]
 
         test_segment = sample["audio"]["array"][:max_length]

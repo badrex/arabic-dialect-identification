@@ -1,5 +1,36 @@
 
-### How to train the model
+# Arabic Dialect Identification (ADI) in Speech by Fine-tuning Speech Encoders
+
+Hello there 👋🏼
+
+This is the code repo for our Interspeech 2025 paper **Voice Conversion Improves Cross-Domain Robustness for Spoken Arabic Dialect Identification**. 
+
+
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.11+
+- PyTorch
+- Transformers
+- Datasets
+- Evaluate
+- Check out requirement.txt
+
+### Environment Setup
+
+1. Set up your environment variables in a `.env` file:
+```
+WANDB_API_KEY=your_wandb_key
+HF_API_KEY=your_huggingface_key
+HF_HOME=/path/to/huggingface/cache
+```
+
+2. Make sure you have access to the Common Voice dataset on Hugging Face.
+
+# Training a Model
+
 
 1. install requirements
 ```
@@ -10,12 +41,18 @@
 
 ```
 project: adi5-vc
-pretrained_model:  facebook/mms-300m  # or , "facebook/wav2vec2-xls-r-300m", facebook/wav2vec2-large-xlsr-53
+
+# choose a multilingual pre-trained speech encoder
+pretrained_model:  facebook/mms-300m  # or "facebook/wav2vec2-xls-r-300m"
+
+# datasets settings
 natural_dataset: adi5-aljazeera-arabic-dialects # path to natural speech dataset
 resynthesized_dataset: adi5-aljazeera-arabic-dialects-vc-12-spkrs-cv # path to resynthesized dataset using vc or augmentation
-sample_data: false #true
+sample_data: false 
 target_speakers:  null # or [1, 3, 4, 6], choose from 1-6 spaker ID 
 sample_size: 14589 # 14589 means no sampling
+
+# training settings
 learning_rate: 0.00005  
 batch_size: 16
 num_train_epochs: 3
@@ -28,11 +65,27 @@ random_seed: 842
 
 ```
 
-3. You need your weights & biases and hugging face access tokes to be stored in an .env file
 
-4. Run the scripts 
+3. Run the scripts 
 ```
-python3 train_ADI5_with_vc.py --config config.yaml
+> python3 train_ADI5_with_vc.py --config config.yaml
 ```
+
+# Citation
+If you use this code or our ADI model, please cite our paper as 
+
+
+```
+@inproceedings{abdullah2025voice,
+  title={Voice Conversion Improves Cross-Domain Robustness for Spoken Arabic Dialect Identification},
+  author={Badr M. Abdullah and Matthew Baas and Bernd Möbius and Dietrich Klakow},
+  year={2025},
+  publisher={Interspeech},
+  url={https://arxiv.org/pdf/2505.24713}
+}
+
+```
+
+
 
 
