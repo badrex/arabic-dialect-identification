@@ -520,7 +520,7 @@ logger.info(f"Training dataset with extracted features: {ADI5_sample_encoded}")
 #true_labels_train_str = ADI5_sample_encoded["train"]['label']
 
 int_to_str = {
-    i: s for i, s in str_to_int.items()
+    i: s for s, i in str_to_int.items()
 }
 
 num_labels = len(int_to_str)
