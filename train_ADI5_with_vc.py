@@ -278,7 +278,8 @@ if config_parameters['apply_vc']:
 
         # get the speakers IDs
         ADI5_dataset_vc_train = ADI5_dataset_vc_train.filter(
-            lambda x: x['speaker'] in config_parameters['target_speakers']
+            lambda x: x['speaker'] in config_parameters['target_speakers'], 
+            num_proc=10,  # number of processes to use for filtering
         )
         
         # Create boolean masks for both speakers
@@ -685,3 +686,8 @@ trainer.save_model()
 # evaluate the model
 logger.info('Evaluating model...')
 trainer.evaluate()
+
+
+# clean up the cache files -- this should delete large arrow files from disk
+logger.info('Cleaning up cache files...')
+ADI5_sample_encoded.cleanup_cache_files()
