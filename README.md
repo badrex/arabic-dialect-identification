@@ -30,7 +30,7 @@ This is the code repo for our Interspeech 2025 paper:
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.9+
 - PyTorch
 - Transformers
 - Datasets
