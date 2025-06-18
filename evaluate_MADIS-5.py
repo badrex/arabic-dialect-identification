@@ -37,14 +37,25 @@ dir_to_dialect = {
 
 main_dir = "/nethome/badr/projects/voice_conversion/"
 
-
-# 4 controlled experiments 
+# fine-tuned models 
 models = {
-    "top models": "model/adi5-vc-mms-300m-5e-05-10-14589-842-vc-n-300125_210327"
+    "top w2vBERT 2.0": "inprogress/adi5-vc-w2v-bert-2.0-5e-06-10-14589-842-vc-n-170625_225005",
+    "top MMS model": "inprogress/adi5-vc-mms-300m-5e-05-10-14589-842-vc-n-300125_210327"
 } 
 
 
 for model, model_path in models.items():
+
+    # load the model and processor
+
+    # ADI5_classifier = AutoModelForAudioClassification.from_pretrained(
+    #     model_path,
+    #     num_labels=5,
+    #     #ignore_mismatched_sizes=True,  # to ignore size mismatch errors
+    # )    
+
+    #print(ADI5_classifier.config.id2label)
+    #continue
 
     # load model as a pipeline
     print(f"Loading {model} model:  {model_path}")
@@ -78,9 +89,15 @@ for model, model_path in models.items():
     y_true = []
     y_pred = []
 
-    for i, sample in tqdm(enumerate(in_domain_eval_dataset), dynamic_ncols=True):
+    for i, sample in tqdm(enumerate(in_domain_eval_dataset), ncols=100, total=len(in_domain_eval_dataset)):
 
-        output = ADI5_classifier(sample["audio"]["array"])[0]
+        # take only the first 30 seconds of the audio
+        max_duration_in_seconds = 30
+        max_length = max_duration_in_seconds * sample["audio"]["sampling_rate"]
+
+        test_segment = sample["audio"]["array"][:max_length]
+
+        output = ADI5_classifier(test_segment)[0]
 
         #true_label = dir_to_dialect[sample["dialect"]]
         true_label = sample["dialect"]
@@ -135,15 +152,15 @@ for model, model_path in models.items():
 
     for domain in domains:
 
-        if domain == "Wikipedia":
-            continue
+        # if domain == "Wikipedia":
+        #     continue
 
         domain_dataset = out_of_domain_eval_dataset.filter(lambda x: x["domain"] == domain)
 
         y_true = []
         y_pred = []
 
-        for i, sample in tqdm(enumerate(domain_dataset), dynamic_ncols=True):
+        for i, sample in tqdm(enumerate(domain_dataset), ncols=100, total=len(domain_dataset)):
 
             output = ADI5_classifier(sample["audio"]["array"])[0]
 
